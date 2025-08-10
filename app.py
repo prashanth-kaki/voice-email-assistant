@@ -13,12 +13,7 @@ EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
 email_map = {
-    "praneetha": "praneethasaimaddula@gmail.com",
-    "rishi": "rushikeshkunisetty@gmail.com",
-    "satvika": "satwikaakula918@gmail.com",  # <-- comma was missing here
-    "varun": "kasireddyvarun123@gmail.com",
-    "surya": "tnvssuryaprasad06@gmail.com",
-    "sayan": "sayanbera565@gmail.com"
+    "example-recipient-name": "forexample@gmail.com"
 }
 
 @app.route("/")
@@ -52,3 +47,4 @@ def send_email():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
