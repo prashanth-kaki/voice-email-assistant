@@ -1,0 +1,160 @@
+<!-- index.html - Voice Mail Assistant Landing Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voice Mail Assistant</title>
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0d0d16, #1a1a2e);
+    color: #cce7ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+}
+
+/* Title */
+h1 {
+    font-size: 2.8rem;
+    color: #00d4ff;
+    margin-bottom: 10px;
+    text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+}
+
+/* Instruction text */
+p {
+    margin-bottom: 30px;
+    color: #bbb;
+    font-size: 1.1rem;
+}
+
+/* Microphone circular button */
+.mic-container {
+    background: radial-gradient(circle at center, rgba(0, 212, 255, 0.1) 0%, rgba(13, 13, 22, 0.8) 70%);
+    padding: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+    cursor: pointer;
+    transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+}
+
+.mic-container:hover {
+    transform: scale(1.12);
+    box-shadow: 0 0 40px rgba(0, 212, 255, 0.8);
+}
+
+/* Microphone icon */
+.mic-icon {
+    font-size: 3rem;
+    color: #00d4ff;
+}
+
+/* Status container */
+.status {
+    margin-top: 35px;
+    background-color: #003344;
+    padding: 15px 25px;
+    border-radius: 12px;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Status color variations */
+.status.success {
+    color: #00ff88;
+    background-color: rgba(0, 50, 20, 0.8);
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
+.status.error {
+    color: #ff4d4d;
+    background-color: rgba(50, 0, 0, 0.8);
+    box-shadow: 0 0 12px rgba(255, 77, 77, 0.5);
+}
+</style>
+</head>
+<body>
+<h1>Voice Mail Assistant</h1>
+<p>Say the recipient's name, subject, and message to send an email</p>
+
+<div class="mic-container" onclick="startRecognition()">
+    <span class="mic-icon">🎙️</span>
+</div>
+
+<div class="status" id="status">Assistant Ready</div>
+
+<script>
+let step = 0;
+let emailData = { name: "", subject: "", body: "" };
+
+const statusEl = document.getElementById('status');
+
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'en-IN';
+recognition.interimResults = false;
+
+function startRecognition() {
+    recognition.start();
+    statusEl.textContent = "Listening...";
+    statusEl.className = "status";
+}
+
+recognition.onresult = function(event) {
+    const transcript = event.results[0][0].transcript.toLowerCase();
+    statusEl.textContent = `Heard: "${transcript}"`;
+    statusEl.className = "status";
+
+    if (step === 0) {
+        emailData.name = transcript;
+        statusEl.textContent = "Now say the subject...";
+        step = 1;
+        setTimeout(startRecognition, 2000);
+    } else if (step === 1) {
+        emailData.subject = transcript;
+        statusEl.textContent = "Now say the message body...";
+        step = 2;
+        setTimeout(startRecognition, 2000);
+    } else if (step === 2) {
+        emailData.body = transcript;
+        statusEl.textContent = "Sending email...";
+        step = 0;
+
+        fetch('/send_email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message) {
+                statusEl.textContent = "Email Sent Successfully!";
+                statusEl.className = "status success";
+            } else {
+                statusEl.textContent = `Error: ${data.error}`;
+                statusEl.className = "status error";
+            }
+        })
+        .catch(err => {
+            statusEl.textContent = "Network error";
+            statusEl.className = "status error";
+        });
+    }
+};
+
+recognition.onerror = function(err) {
+    statusEl.textContent = "Mic error, try again.";
+    statusEl.className = "status error";
+};
+</script>
+</body>
+</html>
