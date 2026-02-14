@@ -99,62 +99,101 @@ let emailData = { name: "", subject: "", body: "" };
 
 const statusEl = document.getElementById('status');
 
-const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = 'en-IN';
-recognition.interimResults = false;
-
-function startRecognition() {
-    recognition.start();
-    statusEl.textContent = "Listening...";
-    statusEl.className = "status";
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+} else {
+    statusEl.textContent = "Speech Recognition is not supported in this browser.";
+    statusEl.className = "status error";
 }
 
-recognition.onresult = function(event) {
-    const transcript = event.results[0][0].transcript.toLowerCase();
-    statusEl.textContent = `Heard: "${transcript}"`;
-    statusEl.className = "status";
-
-    if (step === 0) {
-        emailData.name = transcript;
-        statusEl.textContent = "Now say the subject...";
-        step = 1;
-        setTimeout(startRecognition, 2000);
-    } else if (step === 1) {
-        emailData.subject = transcript;
-        statusEl.textContent = "Now say the message body...";
-        step = 2;
-        setTimeout(startRecognition, 2000);
-    } else if (step === 2) {
-        emailData.body = transcript;
-        statusEl.textContent = "Sending email...";
-        step = 0;
-
-        fetch('/send_email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(emailData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.message) {
-                statusEl.textContent = "Email Sent Successfully!";
-                statusEl.className = "status success";
-            } else {
-                statusEl.textContent = `Error: ${data.error}`;
-                statusEl.className = "status error";
-            }
-        })
-        .catch(err => {
-            statusEl.textContent = "Network error";
-            statusEl.className = "status error";
-        });
+function startRecognition() {
+    if (!recognition) {
+        statusEl.textContent = "Speech Recognition is not supported in this browser.";
+        statusEl.className = "status error";
+        return;
     }
-};
+    try {
+        recognition.start();
+        statusEl.textContent = "Listening...";
+        statusEl.className = "status";
+    } catch (e) {
+        if (e.name === 'InvalidStateError') {
+            statusEl.textContent = "Mic is already active. Please wait...";
+        } else {
+            statusEl.textContent = "Could not start mic. Please try again.";
+        }
+        statusEl.className = "status error";
+    }
+}
 
-recognition.onerror = function(err) {
-    statusEl.textContent = "Mic error, try again.";
-    statusEl.className = "status error";
-};
+if (recognition) {
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        statusEl.textContent = `Heard: "${transcript}"`;
+        statusEl.className = "status";
+
+        if (step === 0) {
+            emailData.name = transcript;
+            statusEl.textContent = "Now say the subject...";
+            step = 1;
+            setTimeout(startRecognition, 2000);
+        } else if (step === 1) {
+            emailData.subject = transcript;
+            statusEl.textContent = "Now say the message body...";
+            step = 2;
+            setTimeout(startRecognition, 2000);
+        } else if (step === 2) {
+            emailData.body = transcript;
+            statusEl.textContent = "Sending email...";
+            step = 0;
+
+            fetch('/send_email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(emailData)
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().catch(() => ({ error: "Server error (" + res.status + ")" }));
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.message) {
+                    statusEl.textContent = "Email Sent Successfully!";
+                    statusEl.className = "status success";
+                } else {
+                    statusEl.textContent = `Error: ${data.error}`;
+                    statusEl.className = "status error";
+                }
+            })
+            .catch(err => {
+                statusEl.textContent = "Failed to send email. Please check your connection.";
+                statusEl.className = "status error";
+            });
+        }
+    };
+
+    recognition.onerror = function(event) {
+        step = 0;
+        if (event.error === 'network') {
+            statusEl.textContent = "Speech service unavailable. Please ensure you are using HTTPS and try again.";
+        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            statusEl.textContent = "Microphone access denied. Please allow mic permissions.";
+        } else if (event.error === 'no-speech') {
+            statusEl.textContent = "No speech detected. Click the mic and try again.";
+        } else if (event.error === 'aborted') {
+            statusEl.textContent = "Listening stopped. Click the mic to restart.";
+        } else {
+            statusEl.textContent = "Mic error: " + event.error + ". Please try again.";
+        }
+        statusEl.className = "status error";
+    };
+}
 </script>
 </body>
 </html>
