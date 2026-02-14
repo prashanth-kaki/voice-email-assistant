@@ -118,7 +118,12 @@ function startRecognition() {
     }
     try {
         recognition.start();
-        statusEl.textContent = "Listening...";
+        const prompts = [
+            "Listening... Say the recipient's name",
+            "Listening... Say the subject",
+            "Listening... Say the message body"
+        ];
+        statusEl.textContent = prompts[step] || "Listening...";
         statusEl.className = "status";
     } catch (e) {
         if (e.name === 'InvalidStateError') {
@@ -132,12 +137,12 @@ function startRecognition() {
 
 if (recognition) {
     recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript.toLowerCase();
+        const transcript = event.results[0][0].transcript;
         statusEl.textContent = `Heard: "${transcript}"`;
         statusEl.className = "status";
 
         if (step === 0) {
-            emailData.name = transcript;
+            emailData.name = transcript.toLowerCase();
             statusEl.textContent = "Now say the subject...";
             step = 1;
             setTimeout(startRecognition, 2000);

@@ -24,7 +24,10 @@ function startDictation(field) {
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
     data[field] = transcript;
-    document.getElementById(`${field}-display`).innerText = transcript;
+    const displayEl = document.getElementById(`${field}-display`);
+    if (displayEl) {
+      displayEl.innerText = transcript;
+    }
     console.log(`${field}: ${transcript}`);
   };
 
