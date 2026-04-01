@@ -1,204 +1,461 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Voice Mail Assistant</title>
-<style>
-body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #0d0d16, #1a1a2e);
-    color: #cce7ff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    text-align: center;
-}
-
-/* Title */
-h1 {
-    font-size: 2.8rem;
-    color: #00d4ff;
-    margin-bottom: 10px;
-    text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-}
-
-/* Instruction text */
-p {
-    margin-bottom: 30px;
-    color: #bbb;
-    font-size: 1.1rem;
-}
-
-/* Microphone circular button */
-.mic-container {
-    background: radial-gradient(circle at center, rgba(0, 212, 255, 0.1) 0%, rgba(13, 13, 22, 0.8) 70%);
-    padding: 50px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
-    cursor: pointer;
-    transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
-}
-
-.mic-container:hover {
-    transform: scale(1.12);
-    box-shadow: 0 0 40px rgba(0, 212, 255, 0.8);
-}
-
-/* Microphone icon */
-.mic-icon {
-    font-size: 3rem;
-    color: #00d4ff;
-}
-
-/* Status container */
-.status {
-    margin-top: 35px;
-    background-color: #003344;
-    padding: 15px 25px;
-    border-radius: 12px;
-    font-weight: bold;
-    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Status color variations */
-.status.success {
-    color: #00ff88;
-    background-color: rgba(0, 50, 20, 0.8);
-    box-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-}
-
-.status.error {
-    color: #ff4d4d;
-    background-color: rgba(50, 0, 0, 0.8);
-    box-shadow: 0 0 12px rgba(255, 77, 77, 0.5);
-}
-</style>
-</head>
-<body>
-<h1>Voice Mail Assistant</h1>
-<p>Say the recipient's name, subject, and message to send an email</p>
-
-<div class="mic-container" onclick="startRecognition()">
-    <span class="mic-icon">🎙️</span>
-</div>
-
-<div class="status" id="status">Assistant Ready</div>
-
-<script>
-let step = 0;
-let emailData = { name: "", subject: "", body: "" };
-
-const statusEl = document.getElementById('status');
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition;
-if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.interimResults = false;
-} else {
-    statusEl.textContent = "Speech Recognition is not supported in this browser.";
-    statusEl.className = "status error";
-}
-
-function startRecognition() {
-    if (!recognition) {
-        statusEl.textContent = "Speech Recognition is not supported in this browser.";
-        statusEl.className = "status error";
-        return;
-    }
-    try {
-        recognition.start();
-        const prompts = [
-            "Listening... Say the recipient's name",
-            "Listening... Say the subject",
-            "Listening... Say the message body"
-        ];
-        statusEl.textContent = prompts[step] || "Listening...";
-        statusEl.className = "status";
-    } catch (e) {
-        if (e.name === 'InvalidStateError') {
-            statusEl.textContent = "Mic is already active. Please wait...";
-        } else {
-            statusEl.textContent = "Could not start mic. Please try again.";
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWS Voice Manager</title>
+    <!-- Modern Typography and Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* Base Reset & Aesthetics */
+        * {
+            box-sizing: border-box;
         }
-        statusEl.className = "status error";
-    }
-}
 
-if (recognition) {
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        statusEl.textContent = `Heard: "${transcript}"`;
-        statusEl.className = "status";
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: #0b0f19;
+            /* Premium subtle dynamic gradient background */
+            background-image: radial-gradient(circle at 15% 50%, rgba(255, 153, 0, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 212, 255, 0.08), transparent 25%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
 
-        if (step === 0) {
-            emailData.name = transcript.toLowerCase();
-            statusEl.textContent = "Now say the subject...";
-            step = 1;
-            setTimeout(startRecognition, 2000);
-        } else if (step === 1) {
-            emailData.subject = transcript;
-            statusEl.textContent = "Now say the message body...";
-            step = 2;
-            setTimeout(startRecognition, 2000);
-        } else if (step === 2) {
-            emailData.body = transcript;
-            statusEl.textContent = "Sending email...";
-            step = 0;
+        /* Header area */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            animation: fadeInDown 1s ease-out;
+        }
 
-            fetch('/send_email', {
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #FF9900, #ff5e62);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1.5px;
+            text-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.15rem;
+            color: #94a3b8;
+            margin-top: 10px;
+            font-weight: 300;
+        }
+
+        /* Glassmorphism Dashboard Panel */
+        .dashboard {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            animation: fadeInUp 1s ease-out;
+        }
+
+        /* Microphone UI Container */
+        .mic-wrapper {
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+
+        .mic-btn {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            color: #FF9900;
+            cursor: pointer;
+            border: 2px solid rgba(255, 153, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 153, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+            position: relative;
+        }
+
+        .mic-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px rgba(255, 153, 0, 0.3);
+            border-color: #FF9900;
+            color: #fff;
+            background: linear-gradient(135deg, #FF9900, #ea580c);
+        }
+
+        /* Pulse Animation when listening */
+        .mic-btn.listening {
+            animation: pulse 1.5s infinite;
+            color: #fff;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: #10b981;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Status Terminal Output */
+        .status-terminal {
+            width: 100%;
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            color: #38bdf8;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 1px solid #1e293b;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            line-height: 1.5;
+        }
+
+        .status-terminal.success {
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-terminal.error {
+            color: #f43f5e;
+            border-color: rgba(244, 63, 94, 0.3);
+            text-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
+        }
+
+        /* Quick Hints Badges */
+        .hints {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .hint-badge {
+            background: rgba(0, 212, 255, 0.05);
+            color: #38bdf8;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            letter-spacing: 0.5px;
+        }
+
+        /* Manual S3 Upload Section */
+        .manual-actions {
+            margin-top: 2.5rem;
+            width: 100%;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .manual-actions h3 {
+            font-size: 0.85rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 0;
+            margin-bottom: 1.2rem;
+        }
+
+        .upload-group {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Premium Buttons */
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-primary {
+            background: #FF9900;
+            /* AWS Orange */
+            color: #0f172a;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(255, 153, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 153, 0, 0.4);
+            background: #ffaa33;
+        }
+
+        /* Keyframe Animations */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 30px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>AWS Voice Automation</h1>
+        <p>Operate Cloud Infrastructure with Natural Language</p>
+    </div>
+
+    <div class="dashboard">
+        <div class="mic-wrapper">
+            <div class="mic-btn" id="mic-btn">
+                <i class="fa-solid fa-microphone"></i>
+            </div>
+        </div>
+
+        <div class="status-terminal" id="status">
+            <span><i class="fa-solid fa-terminal" style="margin-right:10px; color:#475569;"></i> Systems initialized.
+                Awaiting commands...</span>
+        </div>
+
+        <div class="hints">
+            <span class="hint-badge"><i class="fa-solid fa-bolt" style="margin-right:5px; color:#FF9900;"></i> "Boot it
+                up"</span>
+            <span class="hint-badge"><i class="fa-solid fa-power-off" style="margin-right:5px; color:#f43f5e;"></i>
+                "Shut down server"</span>
+            <span class="hint-badge"><i class="fa-solid fa-cloud-arrow-up" style="margin-right:5px; color:#10b981;"></i>
+                "Save to S3"</span>
+        </div>
+
+        <div class="manual-actions">
+            <h3>Manual S3 Operations Target</h3>
+            <div class="upload-group">
+                <div class="file-input-wrapper btn-secondary">
+                    <i class="fa-solid fa-paperclip"></i> <span id="file-label">Select File</span>
+                    <input type="file" id="file-input" />
+                </div>
+                <button class="btn-primary" id="upload-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const micBtn = document.getElementById('mic-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileLabel = document.getElementById('file-label');
+
+        // Update file label dynamically when a file is picked
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileLabel.textContent = e.target.files[0].name.length > 15 ?
+                    e.target.files[0].name.substring(0, 15) + "..." : e.target.files[0].name;
+            } else {
+                fileLabel.textContent = "Select File";
+            }
+        });
+
+        function displayStatus(message, type = "default") {
+            let icon = '<i class="fa-solid fa-terminal" style="margin-right:10px; color:#475569;"></i>';
+            if (type === 'success') icon = '<i class="fa-solid fa-check" style="margin-right:10px;"></i>';
+            if (type === 'error') icon = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:10px;"></i>';
+
+            statusEl.innerHTML = `<span>${icon} ${message}</span>`;
+            statusEl.className = "status-terminal " + (type !== "default" ? type : "");
+        }
+
+        // Voice API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            // When click on mic
+            micBtn.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                    micBtn.classList.add('listening');
+                    displayStatus("Listening... Speak your command!", "default");
+                } catch (e) {
+                    displayStatus("Mic is already listening! Please speak.", "default");
+                }
+            });
+
+            recognition.onresult = function (event) {
+                micBtn.classList.remove('listening');
+                const transcript = event.results[0][0].transcript;
+                displayStatus(`Heard: "${transcript}" - Processing AWS Command...`, "default");
+
+                // Let the user read what it heard briefly
+                setTimeout(() => sendAwsCommand(transcript), 600);
+            };
+
+            recognition.onerror = function (event) {
+                micBtn.classList.remove('listening');
+                if (event.error === 'not-allowed') {
+                    displayStatus("Microphone access denied. Please allow it in the browser address bar.", "error");
+                } else {
+                    displayStatus("Microphone error: " + event.error, "error");
+                }
+            };
+        } else {
+            displayStatus("Speech Recognition is not supported by your browser.", "error");
+        }
+
+        function sendAwsCommand(text) {
+            fetch('/api/aws_command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(emailData)
+                body: JSON.stringify({ command: text })
             })
-            .then(res => {
-                if (!res.ok) {
-                    return res.json().catch(() => ({ error: "Server error (" + res.status + ")" }));
-                }
-                return res.json();
-            })
-            .then(data => {
-                if (data.message) {
-                    statusEl.textContent = "Email Sent Successfully!";
-                    statusEl.className = "status success";
-                } else {
-                    statusEl.textContent = `Error: ${data.error}`;
-                    statusEl.className = "status error";
-                }
-            })
-            .catch(err => {
-                statusEl.textContent = "Failed to send email. Please check your connection.";
-                statusEl.className = "status error";
-            });
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "Server error");
+                    return data;
+                })
+                .then(data => {
+                    if (data.message) displayStatus(data.message, "success");
+                })
+                .catch(err => {
+                    displayStatus(err.message, "error");
+                });
         }
-    };
 
-    recognition.onerror = function(event) {
-        step = 0;
-        if (event.error === 'network') {
-            statusEl.textContent = "Speech service unavailable. Please ensure you are using HTTPS and try again.";
-        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            statusEl.textContent = "Microphone access denied. Please allow mic permissions.";
-        } else if (event.error === 'no-speech') {
-            statusEl.textContent = "No speech detected. Click the mic and try again.";
-        } else if (event.error === 'aborted') {
-            statusEl.textContent = "Listening stopped. Click the mic to restart.";
-        } else {
-            statusEl.textContent = "Mic error: " + event.error + ". Please try again.";
-        }
-        statusEl.className = "status error";
-    };
-}
-</script>
+        // Handle Manual File Upload
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                displayStatus("Please select a file first using the tool.", "error");
+                return;
+            }
+
+            displayStatus(`Uploading ${file.name} to AWS S3 bucket...`, "default");
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/upload_s3', {
+                method: 'POST',
+                body: formData
+            })
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "Server error during upload");
+                    return data;
+                })
+                .then(data => {
+                    displayStatus(data.message, "success");
+                    fileInput.value = ''; // clear input
+                    fileLabel.textContent = "Select File";
+                })
+                .catch(err => {
+                    displayStatus(err.message, "error");
+                });
+        });
+    </script>
 </body>
+
 </html>

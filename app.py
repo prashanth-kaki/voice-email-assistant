@@ -1,63 +1,101 @@
 from flask import Flask, render_template, request, jsonify
-import smtplib
-from email.message import EmailMessage
-from dotenv import load_dotenv
+from aws_automation import AWSAutomationController
+import logging
 import os
-import requests
+from werkzeug.utils import secure_filename
+import logging
 
 app = Flask(__name__)
-load_dotenv()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-
-email_map = {
-    "example-recipient-name": "forexample@gmail.com"
-}
+# Configure your hardcoded test resources here
+# Remember to change these to your real AWS Resources!
+# We set them as globals for simplicity in this demo.
+REAL_INSTANCE_ID = "i-0d47ec9322a5991bc"
+REAL_BUCKET_NAME = "aws-automation-project"
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@app.route("/send_email", methods=["POST"])
-def send_email():
+@app.route("/api/aws_command", methods=["POST"])
+def aws_command():
     data = request.get_json(silent=True)
-    if not data:
-        return jsonify({"error": "Invalid or missing JSON in request body"}), 400
-
-    name = data.get("name", "").strip().lower()
-    subject = data.get("subject", "").strip()
-    body = data.get("body", "").strip()
-
-    if not name:
-        return jsonify({"error": "Recipient name is required"}), 400
-    if not subject:
-        return jsonify({"error": "Email subject is required"}), 400
-    if not body:
-        return jsonify({"error": "Email body is required"}), 400
-
-    if name not in email_map:
-        return jsonify({"error": "Recipient not found"}), 400
-
-    if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        return jsonify({"error": "Email credentials are not configured on the server"}), 500
-
-    to_email = email_map[name]
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_ADDRESS
-    msg["To"] = to_email
-    msg.set_content(body)
-
+    if not data or "command" not in data:
+        return jsonify({"error": "No voice command provided."}), 400
+        
+    command_text = data.get("command", "").lower().strip()
+    logger.info(f"Received Voice Command: '{command_text}'")
+    
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-        return jsonify({"message": "✅ Email sent!"})
+        # Initialize the AWS Boto3 Controller automatically using local aws configure credentials
+        aws_controller = AWSAutomationController()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Failed to connect to AWS: {str(e)}"}), 500
+
+    # Command Router Logic - Fuzzy Matching
+    if any(word in command_text for word in ["start", "boot", "run", "launch", "turn on"]):
+        return _handle_ec2(aws_controller, action="start")
+
+    elif any(word in command_text for word in ["stop", "shut down", "shutdown", "halt", "kill", "turn off"]):
+        return _handle_ec2(aws_controller, action="stop")
+
+    elif any(word in command_text for word in ["upload", "backup", "s3", "save"]):
+        return _handle_s3(aws_controller)
+        
+    else:
+        return jsonify({"error": f"Command '{command_text}' wasn't recognized. Try 'Start the server' or 'Upload file'."}), 400
+
+def _handle_ec2(aws_controller, action):
+    # Triggers the AWS automation script gracefully
+    response = aws_controller.manage_ec2_instance(instance_id=REAL_INSTANCE_ID, action=action)
+    if response:
+        return jsonify({"message": f"Successfully issued command to {action} EC2 instance: {REAL_INSTANCE_ID}"})
+    else:
+        return jsonify({"error": f"Failed to {action} EC2 instance. Check IAM Permissions and valid Instance ID."}), 500
+
+def _handle_s3(aws_controller):
+    # Simulates uploading the README (or any local file) as a backup task
+    local_file = "README.md"
+    upload_target = "voice_command_backup.md"
+    
+    response = aws_controller.manage_s3_bucket(bucket_name=REAL_BUCKET_NAME, file_name=local_file, object_name=upload_target)
+    if response is not None:
+        return jsonify({"message": f"Successfully backed up {local_file} to s3://{REAL_BUCKET_NAME}/{upload_target}!"})
+    else:
+        return jsonify({"error": "Failed S3 Upload. Check IAM boundary policies and ensure bucket exists."}), 500
+
+@app.route("/api/upload_s3", methods=["POST"])
+def upload_s3():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+        
+    filename = secure_filename(file.filename)
+    
+    # Save the file temporarily to use the boto3 upload_file method
+    temp_path = os.path.join(app.root_path, filename)
+    file.save(temp_path)
+    
+    try:
+        aws_controller = AWSAutomationController()
+        response = aws_controller.manage_s3_bucket(bucket_name=REAL_BUCKET_NAME, file_name=temp_path, object_name=filename)
+        
+        # Cleanup temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
+        if response is not None:
+            return jsonify({"message": f"Successfully uploaded {filename} to S3 bucket: {REAL_BUCKET_NAME}!"})
+        else:
+            return jsonify({"error": "Failed S3 Upload. Check IAM boundary policies."}), 500
+    except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return jsonify({"error": f"Failed to connect to AWS: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
-
+    app.run(debug=True, port=5000)

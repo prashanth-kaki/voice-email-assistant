@@ -1,0 +1,43 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "LeastPrivilegeEC2Management",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:StartInstances",
+                "ec2:StopInstances"
+            ],
+            "Resource": [
+                "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0",
+                "arn:aws:ec2:us-east-1:123456789012:instance/i-0987654321fedcba0"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/Project": "AWSAutomationWorkflow"
+                }
+            }
+        },
+        {
+            "Sid": "LeastPrivilegeS3Access",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::my-least-privilege-bucket-data/*"
+            ]
+        },
+        {
+            "Sid": "LeastPrivilegeS3ListBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::my-least-privilege-bucket-data"
+            ]
+        }
+    ]
+}

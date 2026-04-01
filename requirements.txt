@@ -1,3 +1,4 @@
+boto3
+botocore
+moto[ec2,s3]
 Flask
-python-dotenv
-requests
