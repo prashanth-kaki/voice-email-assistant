@@ -1,18 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
-venv/
-.venv/
-
-# Environment
+# Environment Variables
 .env
-
-# IDE
-.vscode/
-.idea/
-
-# Personal config (contains user-specific settings)
-static/config.js
+.venv/
+env/
+__pycache__/
+*.pyc

@@ -1,6 +1,10 @@
 import boto3
 import logging
 from botocore.exceptions import ClientError, NoCredentialsError
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configure logging to capture execution and debugging information
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -83,9 +87,9 @@ if __name__ == "__main__":
     
     automation_controller = AWSAutomationController()
     
-    # ⚠️ TODO: Change these to YOUR actual AWS Instance ID and Bucket Name!
-    REAL_INSTANCE_ID = "i-0d47ec9322a5991bc"  # <--- YOUR Real Instance ID
-    REAL_BUCKET_NAME = "aws-automation-project"
+    # ⚠️ Use environment variables for safety!
+    REAL_INSTANCE_ID = os.getenv("AWS_INSTANCE_ID", "i-your-instance-id")
+    REAL_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "aws-automation-project")
     
     logger.info("--- Executing Stop Instance ---")
     automation_controller.manage_ec2_instance(instance_id=REAL_INSTANCE_ID, action="stop")

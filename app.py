@@ -3,17 +3,18 @@ from aws_automation import AWSAutomationController
 import logging
 import os
 from werkzeug.utils import secure_filename
-import logging
+from dotenv import load_dotenv
+
+# Load secret environment variables
+load_dotenv()
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configure your hardcoded test resources here
-# Remember to change these to your real AWS Resources!
-# We set them as globals for simplicity in this demo.
-REAL_INSTANCE_ID = "i-0d47ec9322a5991bc"
-REAL_BUCKET_NAME = "aws-automation-project"
+# Configure your AWS Resources securely from the .env file
+REAL_INSTANCE_ID = os.getenv("AWS_INSTANCE_ID", "")
+REAL_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "")
 
 @app.route("/")
 def index():
